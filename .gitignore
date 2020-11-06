@@ -1,0 +1,18 @@
+# python
+/.venv
+/*.egg-info
+__pycache__/
+
+# tensorflow
+/tensorflow
+
+# dev data & backup
+/data
+
+# phpstorm
+/.idea/*
+!/.idea/codeStyles
+!/.idea/codeStyleSettings.xml
+
+# mac
+.DS_Store
