@@ -1,0 +1,26 @@
+<annotation>
+	<folder>img</folder>
+	<filename>ducky.4.jpg</filename>
+	<path>/Users/ymlsam/local/workspace/deepgaau/pricetag/data/ducky/img/ducky.4.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>853</width>
+		<height>640</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>ducky</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>379</xmin>
+			<ymin>164</ymin>
+			<xmax>538</xmax>
+			<ymax>310</ymax>
+		</bndbox>
+	</object>
+</annotation>

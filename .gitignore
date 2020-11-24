@@ -19,4 +19,5 @@ __pycache__/
 
 # dev data & backup
 /data/*/*
+!/data/*/raw
 !/data/*/*.pbtxt
