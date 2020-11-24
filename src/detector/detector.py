@@ -271,7 +271,7 @@ def main() -> None:
     num_classes = 1
     label_id_offset = 1
     cat_idx = get_cat_idx()
-    is_training = True
+    is_training = False
     
     ckpt = 'import/checkpoint/ckpt-0' if is_training else 'export/checkpoint/ckpt-0'
     model = load_model(num_classes, ckpt, is_training=is_training)

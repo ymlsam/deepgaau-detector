@@ -126,25 +126,23 @@ def _compute_losses_and_predictions_dicts(
     prediction_dict = ops.bfloat16_to_float32_nested(prediction_dict)
     
     losses_dict = model.loss(prediction_dict, features[fields.InputDataFields.true_image_shape])
-    # ////
-    # losses = [loss_tensor for loss_tensor in losses_dict.values()]
-    # 
-    # if add_regularization_loss:
-    #     # TODO(kaftan): As we figure out mixed precision & bfloat 16, we may
-    #     ## need to convert these regularization losses from bfloat16 to float32
-    #     ## as well.
-    #     regularization_losses = model.regularization_losses()
-    #     if regularization_losses:
-    #         regularization_losses = ops.bfloat16_to_float32_nested(
-    #             regularization_losses)
-    #         regularization_loss = tf.add_n(
-    #             regularization_losses, name='regularization_loss')
-    #         losses.append(regularization_loss)
-    #         losses_dict['Loss/regularization_loss'] = regularization_loss
-    # 
-    # total_loss = tf.add_n(losses, name='total_loss')
-    # ////
-    total_loss = losses_dict['Loss/localization_loss'] + losses_dict['Loss/classification_loss']  # ////
+    # losses = [loss_tensor for loss_tensor in losses_dict.values()]  # ////
+    losses = [losses_dict['Loss/localization_loss'], losses_dict['Loss/classification_loss']]  # ////
+    
+    if add_regularization_loss:
+        # TODO(kaftan): As we figure out mixed precision & bfloat 16, we may
+        ## need to convert these regularization losses from bfloat16 to float32
+        ## as well.
+        regularization_losses = model.regularization_losses()
+        if regularization_losses:
+            regularization_losses = ops.bfloat16_to_float32_nested(
+                regularization_losses)
+            regularization_loss = tf.add_n(
+                regularization_losses, name='regularization_loss')
+            losses.append(regularization_loss)
+            losses_dict['Loss/regularization_loss'] = regularization_loss
+    
+    total_loss = tf.add_n(losses, name='total_loss')
     losses_dict['Loss/total_loss'] = total_loss
     
     return losses_dict, prediction_dict
@@ -442,6 +440,7 @@ def train_loop(
         train_steps=None,
         use_tpu=False,
         save_final_config=False,
+        log_every_n=100,
         checkpoint_every_n=1000,
         checkpoint_max_to_keep=7,
         record_summaries=True,
@@ -461,8 +460,7 @@ def train_loop(
   
     Args:
       pipeline_config_path: A path to a pipeline config file.
-      model_dir:
-        The directory to save checkpoints and summaries to.
+      model_dir: The directory to save checkpoints and summaries to.
       config_override: A pipeline_pb2.TrainEvalPipelineConfig text proto to
         override the config from `pipeline_config_path`.
       train_steps: Number of training steps. If None, the number of training steps
@@ -470,8 +468,8 @@ def train_loop(
       use_tpu: Boolean, whether training and evaluation should run on TPU.
       save_final_config: Whether to save final config (obtained after applying
         overrides) to `model_dir`.
-      checkpoint_every_n:
-        Checkpoint every n training steps.
+      log_every_n: Log total loss every n training steps.
+      checkpoint_every_n: Checkpoint every n training steps.
       checkpoint_max_to_keep:
         int, the number of most recent checkpoints to keep in the model directory.
       record_summaries: Boolean, whether or not to record summaries.
@@ -663,15 +661,14 @@ def train_loop(
                         'steps_per_sec', num_steps_per_iteration * 1.0 / time_taken,
                         step=global_step)
                     
-                    if global_step.value() - logged_step >= 100:
+                    if global_step.value() - logged_step >= log_every_n:
                         tf.logging.info(
                             'Step {} per-step time {:.3f}s loss={:.3f}'.format(
                                 global_step.value(), time_taken / num_steps_per_iteration,
                                 loss))
                         logged_step = global_step.value()
                     
-                    if ((int(global_step.value()) - checkpointed_step) >=
-                            checkpoint_every_n):
+                    if (int(global_step.value()) - checkpointed_step) >= checkpoint_every_n:
                         manager.save()
                         checkpointed_step = int(global_step.value())
     

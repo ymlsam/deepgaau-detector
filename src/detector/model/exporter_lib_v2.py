@@ -239,10 +239,8 @@ def export_inference_graph(input_type,
     detection_model = INPUT_BUILDER_UTIL_MAP['model_build'](
         pipeline_config.model, is_training=False)
     
-    ckpt = tf.train.Checkpoint(
-        model=detection_model)
-    manager = tf.train.CheckpointManager(
-        ckpt, trained_checkpoint_dir, max_to_keep=1)
+    ckpt = tf.train.Checkpoint(model=detection_model)
+    manager = tf.train.CheckpointManager(ckpt, trained_checkpoint_dir, max_to_keep=1)
     status = ckpt.restore(manager.latest_checkpoint).expect_partial()
     
     if input_type not in DETECTION_MODULE_MAP:
@@ -263,14 +261,11 @@ def export_inference_graph(input_type,
     # be constructed --- only after this can we save the checkpoint and
     # saved model.
     concrete_function = detection_module.__call__.get_concrete_function()
-    status.assert_existing_objects_matched()  # ////
+    status.assert_existing_objects_matched()
     
-    exported_checkpoint_manager = tf.train.CheckpointManager(
-        ckpt, output_checkpoint_directory, max_to_keep=1)
+    exported_checkpoint_manager = tf.train.CheckpointManager(ckpt, output_checkpoint_directory, max_to_keep=1)
     exported_checkpoint_manager.save(checkpoint_number=0)
     
-    tf.saved_model.save(detection_module,
-                        output_saved_model_directory,
-                        signatures=concrete_function)
+    tf.saved_model.save(detection_module, output_saved_model_directory, signatures=concrete_function)
     
     config_util.save_pipeline_config(pipeline_config, output_directory)

@@ -40,7 +40,8 @@ flags.DEFINE_string('model_dir', None, 'Path to output model directory where eve
 flags.DEFINE_boolean('use_tpu', False, 'Whether the job is executing on a TPU.')
 flags.DEFINE_string('tpu_name', None, 'Name of the Cloud TPU for Cluster Resolvers.')
 flags.DEFINE_integer('num_workers', 1, 'When num_workers > 1, training uses MultiWorkerMirroredStrategy. When num_workers = 1 it uses MirroredStrategy.')
-flags.DEFINE_integer('checkpoint_every_n', 1000, 'Integer defining how often we checkpoint.')
+flags.DEFINE_integer('log_every_n', 10, 'Integer defining how often we log total loss.')
+flags.DEFINE_integer('checkpoint_every_n', 100, 'Integer defining how often we checkpoint (must be <= num_train_steps or checkpoint will be only initialized but never saved after training).')
 flags.DEFINE_boolean('record_summaries', True, 'Whether or not to record summaries during training.')
 
 # evaluation config
@@ -87,6 +88,7 @@ def train_model() -> None:
             model_dir=FLAGS.model_dir,
             train_steps=FLAGS.num_train_steps,
             use_tpu=FLAGS.use_tpu,
+            log_every_n=FLAGS.log_every_n,
             checkpoint_every_n=FLAGS.checkpoint_every_n,
             record_summaries=FLAGS.record_summaries,
         )
