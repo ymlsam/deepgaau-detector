@@ -4,7 +4,7 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 from object_detection.utils import visualization_utils as viz_utils
-from typing import Dict, List, Union
+from typing import Dict, List, Optional
 
 
 def config() -> None:
@@ -29,7 +29,7 @@ def is_mac() -> bool:
     return True
     
     
-def plot_detections(img: np.ndarray, boxes: np.ndarray, classes: np.ndarray, scores: Union[np.ndarray, None], cat_idx: Dict, out_img_path: str = '') -> None:
+def plot_detections(img: np.ndarray, boxes: np.ndarray, classes: np.ndarray, scores: Optional[np.ndarray], cat_idx: Dict, out_img_path: str = '') -> None:
     """to visualize detections
     
     Args:
@@ -49,7 +49,7 @@ def plot_detections(img: np.ndarray, boxes: np.ndarray, classes: np.ndarray, sco
         plt.imshow(annotated_img)
 
 
-def plot_detectionss(imgs: List[np.ndarray], boxes_list: List[np.ndarray], classes_list: List[np.ndarray], scores_list: List[Union[np.ndarray, None]], cat_idx: Dict, out_img_dir: str = '', row: int = 0, col: int = 3, lmt: int = 0) -> None:
+def plot_detectionss(imgs: List[np.ndarray], boxes_list: List[np.ndarray], classes_list: List[np.ndarray], scores_list: List[Optional[np.ndarray]], cat_idx: Dict, out_img_dir: str = '', row: int = 0, col: int = 3, lmt: int = 0) -> None:
     if not out_img_dir:
         config()
     

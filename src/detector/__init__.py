@@ -1,1 +1,1 @@
-from .detector import run
+from .detector import main

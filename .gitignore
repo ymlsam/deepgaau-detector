@@ -1,18 +1,23 @@
+# mac
+.DS_Store
+
+# JetBrains
+/.idea/*
+!/.idea/codeStyles
+!/.idea/codeStyleSettings.xml
+
 # python
 /.venv
 /*.egg-info
 __pycache__/
 
-# tensorflow
-/tensorflow
+# external libraries (e.g. tensorflow)
+/lib
+
+# models
+/model/*/export
+/model/*/import
+/model/*/training
 
 # dev data & backup
 /data
-
-# phpstorm
-/.idea/*
-!/.idea/codeStyles
-!/.idea/codeStyleSettings.xml
-
-# mac
-.DS_Store

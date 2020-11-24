@@ -1,4 +1,4 @@
 #!/bin/bash
 
-# deactivate virtual environment
+# deactivate python virtual env
 deactivate
