@@ -15,9 +15,8 @@ __pycache__/
 /lib
 
 # models
-/model/*/export
-/model/*/import
-/model/*/training
+/model/*/*
 
 # dev data & backup
-/data
+/data/*/*
+!/data/*/*.pbtxt

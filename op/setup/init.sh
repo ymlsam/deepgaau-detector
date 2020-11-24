@@ -21,8 +21,8 @@ rm -f $PROTOC_ZIP
 
 # install tensorflow object detection api
 cd "$DGD" || exit
-mkdir -p "$DGD_DIR_TF"
-cd "$DGD_DIR_TF" || exit
+mkdir -p "$DGD_TF"
+cd "$DGD_TF" || exit
 git clone https://github.com/tensorflow/models.git
 
 cd models/research || exit

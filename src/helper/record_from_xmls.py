@@ -9,7 +9,8 @@ from PIL import Image
 from six import BytesIO
 from typing import Dict, List, TypedDict
 
-# reduce logging
+
+# reduce tensorflow logging
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# this script must be run at project root by calling "op/profile.sh"
+# this script must be run at project root by calling "op/setup/profile.sh"
 
 # make sure env var $DGD is ready
 PATH_PROFILE="$HOME/.bash_profile"

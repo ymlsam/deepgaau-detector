@@ -4,4 +4,4 @@
 . "$DGD/op/env.sh" || exit
 
 # tensorboard
-tensorboard --logdir="$DGD_DIR_NET_TRAIN"
+tensorboard --logdir="$DGD_NET_TRAIN"
