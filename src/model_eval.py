@@ -28,7 +28,7 @@ FLAGS = flags.FLAGS
 
 def main(_) -> None:
     evaluator.eval_continuously(
-        config_path=FLAGS.config_path,
+        FLAGS.config_path,
         model_dir=FLAGS.model_dir,
         train_steps=FLAGS.num_train_steps,
         sample_1_of_n_eval_examples=FLAGS.sample_1_of_n_eval_examples,

@@ -30,19 +30,28 @@ def is_mac() -> bool:
     return True
     
     
-def plot_detections(img: np.ndarray, boxes: np.ndarray, clss: np.ndarray, scores: Optional[np.ndarray], cat_idx: Dict, out_path: str = '') -> None:
+def plot_detections(
+        img: np.ndarray,
+        boxes: np.ndarray,
+        clss: np.ndarray,
+        scores: Optional[np.ndarray],
+        min_score: float,
+        cat_idx: Dict,
+        out_path: str = '',
+) -> None:
     """to visualize detections
     
     Args:
-        img     : uint8 numpy array with shape (img_height, img_width, 3)
-        boxes   : numpy array of shape [N, 4]
-        clss    : numpy array of shape [N]. Note that class indices are 1-based, and match the keys in the label map.
-        scores  : numpy array of shape [N] or None. If scores=None, then this function assumes that the boxes to be plotted are groundtruth boxes and plot all boxes as black with no classes or scores.
-        cat_idx : dict containing category dictionaries (each holding category index `id` and category name `name`) keyed by category indices.
-        out_path: name for the image file.
+        img      : uint8 numpy array with shape (img_height, img_width, 3)
+        boxes    : numpy array of shape [N, 4]
+        clss     : numpy array of shape [N]. Note that class indices are 1-based, and match the keys in the label map.
+        scores   : numpy array of shape [N] or None. If scores=None, then this function assumes that the boxes to be plotted are groundtruth boxes and plot all boxes as black with no classes or scores.
+        min_score: minimum score threshold for a box or keypoint to be visualized.
+        cat_idx  : dict containing category dictionaries (each holding category index `id` and category name `name`) keyed by category indices.
+        out_path : name for the image file.
     """
     annotated_img = img.copy()
-    viz_utils.visualize_boxes_and_labels_on_image_array(annotated_img, boxes, clss, scores, cat_idx, use_normalized_coordinates=True, min_score_thresh=0.8)
+    viz_utils.visualize_boxes_and_labels_on_image_array(annotated_img, boxes, clss, scores, cat_idx, use_normalized_coordinates=True, min_score_thresh=min_score)
     
     if out_path:
         plt.imsave(out_path, annotated_img)
@@ -56,6 +65,7 @@ def plot_detectionss(
         boxes_list: Iterable[np.ndarray],
         clss_list: Iterable[np.ndarray],
         scores_list: Iterable[Optional[np.ndarray]],
+        min_score: float,
         cat_idx: Dict,
         out_dir: str = '',
         row: int = 0,
@@ -84,7 +94,7 @@ def plot_detectionss(
         fn = os.path.splitext(os.path.basename(img_path))[0] + '.out' if img_path else 'out.' + ('%d' % i)
         out_path = (out_dir + '/' + fn + '.jpg') if out_dir else ''
         
-        plot_detections(img, boxes, clss, scores, cat_idx, out_path=out_path)
+        plot_detections(img, boxes, clss, scores, min_score, cat_idx, out_path=out_path)
     
     if not out_dir:
         plt.show()

@@ -3,6 +3,9 @@
 # prepare env
 . "$DGD/op/env.sh" || exit
 
+# prepare folder
+mkdir -p "$DGD_DATA/detect"
+
 # run main routine
 python "src/detect.py" \
   --config_path="$DGD_NET_CONF" \

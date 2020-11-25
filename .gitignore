@@ -1,6 +1,3 @@
-# mac
-.DS_Store
-
 # JetBrains
 /.idea/*
 !/.idea/codeStyles
@@ -11,13 +8,17 @@
 /*.egg-info
 __pycache__/
 
+# dev data & backup
+/data/*/*
+!/data/*/raw
+!/data/*/*.*
+
 # external libraries (e.g. tensorflow)
 /lib
 
 # models
 /model/*/*
+!/model/*/*.*
 
-# dev data & backup
-/data/*/*
-!/data/*/raw
-!/data/*/*.pbtxt
+# mac
+.DS_Store

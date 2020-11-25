@@ -50,8 +50,8 @@ def main(_) -> None:
     
     with strategy.scope():
         trainer.train_loop(
-            config_path=FLAGS.config_path,
-            model_dir=FLAGS.model_dir,
+            FLAGS.config_path,
+            FLAGS.model_dir,
             train_steps=FLAGS.num_train_steps,
             use_tpu=FLAGS.use_tpu,
             log_every_n=FLAGS.log_every_n,

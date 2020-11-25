@@ -25,7 +25,7 @@ sudo ln -s python3 /usr/local/bin/python
 python --version
 ```
 
-### Setup
+## Project Setup
 * open terminal
 * go to project root
 * make shell scripts executable
@@ -60,11 +60,22 @@ find op -type f -name "*.sh" -exec chmod u+x {} \;
 ## XML to TFRecord Conversion
 [`op/img/convert.sh`](op/img/convert.sh)
 
-# Model Initialization & Configuration
+# Object Detection Model
+## Initialization
+* make sure env var "$DGD_NET" in [op/env.sh](op/env.sh) is pointing to the network that you would to like to start fine-tuning from
 * download pre-trained network checkpoint & import config
 
 [`op/model/import.sh`](op/model/import.sh)
-* edit config (corresponding to "[ssd_resnet50_v1_fpn_640x640_coco17_tpu-8](model/ssd_resnet50_v1_fpn_640x640_coco17_tpu-8)")
+
+## Configuration
+* prepare various paths using env var
+```
+echo "$DGD_NET_IMPORT/checkpoint/ckpt-0"
+echo "$DGD_DATA_LABEL"
+echo "$DGD_DATA/train/_train.tfrecord"
+echo "$DGD_DATA/dev/_dev.tfrecord"
+```
+* edit config, replacing env var with actual value
 
 [`vi "$DGD_NET_CONF"`](model/ssd_resnet50_v1_fpn_640x640_coco17_tpu-8/pipeline.config)
 * model.ssd.num_classes: 1
@@ -74,6 +85,7 @@ find op -type f -name "*.sh" -exec chmod u+x {} \;
 * train_config.add_regularization_loss: false
 * train_config.optimizer.momentum_optimizer.learning_rate.constant_learning_rate.learning_rate: 0.01
 * train_config.optimizer.momentum_optimizer.momentum_optimizer_value: 0.9
+* remove "train_config.data_augmentation_options"
 * train_config.fine_tune_checkpoint: "$DGD_NET_IMPORT/checkpoint/ckpt-0"
 * train_config.fine_tune_checkpoint_type: "detection"
 * train_config.update_trainable_variables: ["WeightSharedConvolutionalBoxHead", "WeightSharedConvolutionalClassHead"]
@@ -83,7 +95,7 @@ find op -type f -name "*.sh" -exec chmod u+x {} \;
 * eval_input_reader.label_map_path: "$DGD_DATA_LABEL"
 * eval_input_reader.tf_record_input_reader.input_path: "$DGD_DATA/dev/_dev.tfrecord"
 
-# Training & Evaluation
+## Training & Evaluation
 * start training based on config & train set (training is cumulative, you may want to change or clean up training directory during config tuning)
 
 [`op/model/train.sh`](op/model/train.sh)
@@ -94,16 +106,17 @@ find op -type f -name "*.sh" -exec chmod u+x {} \;
 
 [`op/model/report.sh`](op/model/report.sh)
 
-# Exporting
+## Exporting
 * export trained model (you may want to change export directory first to avoid overwriting previously exported checkpoint or model)
 
 [`op/model/export.sh`](op/model/export.sh)
 
-# Detection
+## Detection
 * detect objects from test set
 
 [`op/detect.sh`](op/detect.sh)
 * check "$DGD_DATA/detect" for detected objects
+* as a reference, for "[ssd_resnet50_v1_fpn_640x640_coco17_tpu-8](model/ssd_resnet50_v1_fpn_640x640_coco17_tpu-8)", detection starts working with around 100 epochs (num_steps) on the ducky dataset, with edge cases (e.g. ducky.0.jpg in test set) still fail
 * change "in_path" in "[op/detect.sh](op/detect.sh)" to an image directory or a specific image file (.jpg)fff that you would like to detect
 * change "out_dir" in "[op/detect.sh](op/detect.sh)" to alternative output directory
 

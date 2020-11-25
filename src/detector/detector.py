@@ -143,9 +143,9 @@ def save_detectionss(
         boxes_list: Iterable[np.ndarray],
         clss_list: Iterable[np.ndarray],
         scores_list: Iterable[np.ndarray],
+        min_score: float,
         cat_idx: Dict,
         out_dir: str,
-        min_score=0.8,
 ) -> None:
     if not out_dir:
         return
@@ -188,9 +188,13 @@ def main(config_path: str, ckpt_path: str, in_path: str, out_dir: str) -> None:
     # detect
     (boxes_list, clss_list, scores_list, imgs, img_paths) = detect_file(model, in_path)
     
+    # scores outputted by different networks vary
+    # scores of true positive detection from resnet can be as high as 0.9-1.0, while they are much lower in mobilenet
+    min_score = 0.5
+    
     # visualize detections
     plot_dir = os.path.join(out_dir, 'plot') if out_dir else ''
-    plotter.plot_detectionss(imgs, img_paths, boxes_list, clss_list, scores_list, cat_idx, out_dir=plot_dir)
+    plotter.plot_detectionss(imgs, img_paths, boxes_list, clss_list, scores_list, min_score, cat_idx, out_dir=plot_dir)
     
     # output detected objects as image files
-    save_detectionss(imgs, img_paths, boxes_list, clss_list, scores_list, cat_idx, out_dir)
+    save_detectionss(imgs, img_paths, boxes_list, clss_list, scores_list, min_score, cat_idx, out_dir)

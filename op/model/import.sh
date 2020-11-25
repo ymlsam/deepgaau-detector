@@ -19,3 +19,6 @@ mv "$DGD_NET_NAME" "$(basename "$DGD_NET_IMPORT")"
 # clone config (do not overwrite existing config)
 cd "$DGD" || exit
 cp -n "$DGD_NET_IMPORT/pipeline.config" "$DGD_NET_CONF"
+
+# list trainable variable names for reference
+op/model/var.sh > "$DGD_NET/trainable_var.txt"

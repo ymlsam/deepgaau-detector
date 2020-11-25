@@ -59,7 +59,7 @@ def eager_train_step(
     
     Args:
         model: A DetectionModel (based on Keras) to train.
-        train_vars: List of trainable variables from unfreezed layers
+        train_vars: List of trainable variables from unfrozen layers
         features: Dictionary of feature tensors from the input dataset. Should be in the format output by
         `inputs.train_input`.
             features[fields.InputDataFields.image] is a [batch_size, H, W, C] float32 tensor with preprocessed images.
@@ -165,8 +165,29 @@ def get_filepath(strategy: tf.distribute.Strategy, filepath: str) -> str:
         return os.path.join(filepath, 'temp_worker_{:03d}'.format(task_id))
 
 
-def get_train_vars(model: tf.keras.layers.Layer, train_config: train_pb2.TrainConfig) -> List[tf.Variable]:
-    # list trainable variables from unfreezed layers (after model checkpoint is restored)
+def get_train_input(model: DetectionModel, configs: Dict, strategy: tf.distribute.Strategy) -> tf.distribute.DistributedDataset:
+    model_config = configs['model']
+    train_config = configs['train_config']
+    train_input_config = configs['train_input_config']
+    
+    def train_dataset_fn(input_context: tf.distribute.InputContext) -> tf.data.Dataset:
+        """Callable to create train input."""
+        train_input = inputs.train_input(
+            train_config=train_config,
+            train_input_config=train_input_config,
+            model_config=model_config,
+            model=model,
+            input_context=input_context,
+        )
+        train_input = train_input.repeat()
+        
+        return train_input
+    
+    return strategy.experimental_distribute_datasets_from_function(train_dataset_fn)
+
+
+def get_unfrozen_train_vars(model: tf.keras.layers.Layer, train_config: train_pb2.TrainConfig) -> List[tf.Variable]:
+    # list trainable variables from unfrozen layers (after model checkpoint is restored)
     inc_patterns = train_config.update_trainable_variables
     exc_patterns = train_config.freeze_variables
     
@@ -181,12 +202,41 @@ def is_object_based_ckpt(ckpt_path: str) -> bool:
     return '_CHECKPOINTABLE_OBJECT_GRAPH' in var_names
 
 
+def list_train_var_names(config_path: str) -> None:
+    """List all trainable variables."""
+
+    # config
+    configs = config_util.get_configs_from_pipeline_file(config_path)
+    
+    # model
+    model_config = configs['model']
+    model = model_builder.build(model_config=model_config, is_training=False)
+
+    strategy = tf.distribute.get_strategy()
+    with strategy.scope():
+        # build input
+        train_input = get_train_input(model, configs, strategy)
+
+        # load a pre-trained checkpoint
+        train_config = configs['train_config']
+        base_ckpt = train_config.fine_tune_checkpoint
+        base_ckpt_type = train_config.fine_tune_checkpoint_type
+        base_ckpt_ver = train_config.fine_tune_checkpoint_version
+        unpad_gt_tensors = train_config.unpad_groundtruth_tensors
+        
+        load_base_ckpt(model, base_ckpt, base_ckpt_type, base_ckpt_ver, train_input, unpad_gt_tensors)
+    
+    # list all trainable variables (without filtering frozen variables)
+    for train_var in model.trainable_variables:
+        print(train_var.name)
+
+
 def load_base_ckpt(
         model: DetectionModel,
         ckpt_path: str,
         ckpt_type: str,
         ckpt_ver: train_pb2.CheckpointVersion,
-        input_dataset: tf.data.Dataset,
+        input_dataset: tf.distribute.DistributedDataset,
         unpad_gt_tensors: bool,
 ) -> None:
     """Load a fine tuning classification or detection checkpoint.
@@ -220,20 +270,20 @@ def load_base_ckpt(
     if ckpt_ver == train_pb2.CheckpointVersion.V1:
         raise ValueError('Checkpoint version should be V2')
     
-    features, labels = iter(input_dataset).next()
-    
-    # executes the model by computing a dummy loss, so that variables are all built
-    @tf.function
-    def _dummy_computation_fn(features, labels):
-        model._is_training = False  # pylint: disable=protected-access
-        tf.keras.backend.set_learning_phase(False)
+    if input_dataset is not None:
+        # executes the model by computing a dummy loss, so that variables are all built
+        @tf.function
+        def _dummy_computation_fn(dummy_features, dummy_labels):
+            model._is_training = False  # pylint: disable=protected-access
+            tf.keras.backend.set_learning_phase(False)
+            
+            dummy_labels = model_lib.unstack_batch(dummy_labels, unpad_groundtruth_tensors=unpad_gt_tensors)
+            
+            return loss_util.predict_with_loss(model, dummy_features, dummy_labels)
         
-        labels = model_lib.unstack_batch(labels, unpad_groundtruth_tensors=unpad_gt_tensors)
-        
-        return loss_util.predict_with_loss(model, features, labels)
-    
-    strategy = tf.distribute.get_strategy()
-    strategy.run(_dummy_computation_fn, args=(features, labels))
+        features, labels = iter(input_dataset).next()
+        strategy = tf.distribute.get_strategy()
+        strategy.run(_dummy_computation_fn, args=(features, labels))
     
     # validate model
     restore_from_objects_dict = model.restore_from_objects(fine_tune_checkpoint_type=ckpt_type)
@@ -241,10 +291,12 @@ def load_base_ckpt(
     # ckpt = tf.train.Checkpoint(**restore_from_objects_dict)
     # ckpt.restore(ckpt_path).assert_existing_objects_matched()
     
-    # For "ssd_resnet50_v1_fpn_640x640_coco17_tpu-8", set up object-based checkpoint restore.
-    # RetinaNet has two prediction `heads`, one for classification, the other for box regression.
-    # We will restore the box regression head but initialize the classification head from scratch
-    # We show the omission below by commenting out the line that we would add if we wanted to restore both heads
+    # set up object-based checkpoint restore for networks like "ssd_mobilenet_v2_fpnlite_640x640_coco17_tpu-8",
+    # "ssd_resnet50_v1_fpn_640x640_coco17_tpu-8"
+    
+    # e.g. RetinaNet has two prediction `heads`, one for classification, the other for box regression
+    # we will restore the box regression head but initialize the classification head from scratch
+    # we show the omission below by commenting out the line that we would add if we wanted to restore both heads
     box_predictor_ckpt = tf.train.Checkpoint(
         _base_tower_layers_for_heads=model._box_predictor._base_tower_layers_for_heads,
         # _prediction_heads=model._box_predictor._prediction_heads,  # classification head that will NOT be restored
@@ -307,7 +359,6 @@ def train_loop(
     
     model_config = configs['model']
     train_config = configs['train_config']
-    train_input_config = configs['train_input_config']
     
     unpad_gt_tensors = train_config.unpad_groundtruth_tensors
     add_regularization_loss = train_config.add_regularization_loss
@@ -340,20 +391,7 @@ def train_loop(
         model = model_builder.build(model_config=model_config, is_training=True)
         
         # build input
-        def train_dataset_fn(input_context: tf.distribute.InputContext) -> tf.data.Dataset:
-            """Callable to create train input."""
-            train_input = inputs.train_input(
-                train_config=train_config,
-                train_input_config=train_input_config,
-                model_config=model_config,
-                model=model,
-                input_context=input_context,
-            )
-            train_input = train_input.repeat()
-            
-            return train_input
-        
-        train_input = strategy.experimental_distribute_datasets_from_function(train_dataset_fn)
+        train_input = get_train_input(model, configs, strategy)
         
         # build optimizer
         global_step = tf.Variable(
@@ -404,7 +442,7 @@ def train_loop(
                     load_base_ckpt(model, base_ckpt, base_ckpt_type, base_ckpt_ver, train_input, unpad_gt_tensors)
                 
                 # get trainable variables
-                train_vars = get_train_vars(model, train_config)
+                train_vars = get_unfrozen_train_vars(model, train_config)
                 
                 # define training step
                 def train_step_fn(features: Dict, labels: Dict):
