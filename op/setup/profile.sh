@@ -12,7 +12,7 @@ export DGD="$PATH_PROJECT"
 
 # install env var in bash profile for subsequent shell session
 if [ -z "$EXPORT_LINE" ]; then
-  { echo ""; echo "# deepgaau.detector"; echo "export DGD=\"$PATH_PROJECT\""; } >> "$PATH_PROFILE"
+  { echo ""; echo "# deepgaau-detector"; echo "export DGD=\"$PATH_PROJECT\""; } >> "$PATH_PROFILE"
   echo "env var \$DGD is set"
 else
   echo "env var \$DGD has already been there"

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 
 setup(
-    name='deepgaau.detector',
+    name='deepgaau-detector',
     version='0.0.0',
     packages=find_packages(include=[]),
     install_requires=[
