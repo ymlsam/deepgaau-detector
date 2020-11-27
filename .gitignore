@@ -10,7 +10,7 @@ __pycache__/
 
 # dev data & backup
 /data/*/*
-!/data/*/raw
+!/data/ducky/input
 !/data/*/*.*
 
 # external libraries (e.g. tensorflow)

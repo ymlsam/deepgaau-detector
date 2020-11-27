@@ -12,6 +12,9 @@ op/python/update_pip.sh
 # install dependencies (via setup.py)
 pip install -e .
 
+# list installed packages
+pip list
+
 # install protoc
 PROTOC_ZIP=protoc-3.7.1-osx-x86_64.zip
 curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/$PROTOC_ZIP

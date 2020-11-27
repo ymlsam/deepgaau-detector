@@ -39,6 +39,7 @@ find op -type f -name "*.sh" -exec chmod u+x {} \;
 * initialize project
 
 [`op/setup/init.sh`](op/setup/init.sh)
+* adopt ".venv/bin/python" as Python interpreter for your IDE
 
 # Data & Preprocessing
 ## Image Preparation
@@ -115,7 +116,7 @@ echo "$DGD_DATA/dev/_dev.tfrecord"
 * detect objects from test set
 
 [`op/detect.sh`](op/detect.sh)
-* check "$DGD_DATA/detect" for detected objects
+* check "$DGD_DATA/output" for detected objects
 * as a reference, for "[ssd_resnet50_v1_fpn_640x640_coco17_tpu-8](model/ssd_resnet50_v1_fpn_640x640_coco17_tpu-8)", detection starts working with around 100 epochs (num_steps) on the ducky dataset, with edge cases (e.g. ducky.0.jpg in test set) still fail
 * change "in_path" in "[op/detect.sh](op/detect.sh)" to an image directory or a specific image file (.jpg)fff that you would like to detect
 * change "out_dir" in "[op/detect.sh](op/detect.sh)" to alternative output directory
