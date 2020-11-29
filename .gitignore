@@ -11,14 +11,16 @@ __pycache__/
 # dev data & backup
 /data/*/*
 !/data/ducky/input
-!/data/*/*.*
+!/data/*/label.pbtxt
+!/data/*/tune.csv
 
 # external libraries (e.g. tensorflow)
 /lib
 
 # models
-/model/*/*
-!/model/*/*.*
+/model/**/export
+/model/**/import
+/model/**/training
 
 # mac
 .DS_Store

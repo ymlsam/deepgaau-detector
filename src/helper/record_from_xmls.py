@@ -10,8 +10,10 @@ from six import BytesIO
 from typing import Dict, List, TypedDict
 
 
-# reduce tensorflow logging
+# reduce log
+# log_util.reduce_log()  # TODO: move script to root so that "from detector.util import log_util" works
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+tf.get_logger().propagate = False
 
 
 # typing

@@ -4,7 +4,7 @@
 . "$DGD/op/env.sh" || exit
 
 # annotate images via labelImg
-labelImg "$DGD_DATA/input"
+labelImg "$DGD_DATA_INPUT"
 
 # click "Open Dir" to select image directory
 

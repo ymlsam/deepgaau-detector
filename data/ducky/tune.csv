@@ -1,0 +1,10 @@
+network,config,aug,loss,reg,opt,epoch,batch,eval-mAP
+ssd_mobilenet_v2_fpnlite_640x640_coco17_tpu-8,tune/0,no,cls+loc,no,constant,200,16,0.723
+ssd_mobilenet_v2_fpnlite_640x640_coco17_tpu-8,tune/1,no,cls+loc,yes,constant,200,16,0.719
+ssd_mobilenet_v2_fpnlite_640x640_coco17_tpu-8,tune/2,yes,cls+loc,no,constant,200,16,0.710
+ssd_mobilenet_v2_fpnlite_640x640_coco17_tpu-8,tune/3,no,all,no,constant,200,16,0.707
+ssd_mobilenet_v2_fpnlite_640x640_coco17_tpu-8,tune/4,no,cls+loc,no,constant_10x,200,16,0.800
+ssd_mobilenet_v2_fpnlite_640x640_coco17_tpu-8,tune/5,no,cls+loc,no,cosine_decay,200,16,0.800
+ssd_mobilenet_v2_fpnlite_640x640_coco17_tpu-8,tune/6,no,cls+loc,yes,constant_10x,200,16,0.792
+ssd_mobilenet_v2_fpnlite_640x640_coco17_tpu-8,tune/7,no,cls+loc,no,constant_10x,400,16,0.782
+ssd_mobilenet_v2_fpnlite_640x640_coco17_tpu-8,tune/8,yes,cls+loc,no,cosine_decay,800,16,0.835

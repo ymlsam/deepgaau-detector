@@ -50,7 +50,7 @@ find op -type f -name "*.sh" -exec chmod u+x {} \;
 ## Label Map
 * create or update label map accordingly
 
-[`vi "$DGD_DATA_LABEL"`](data/ducky/ducky.pbtxt)
+[`vi "$DGD_DATA_LABEL"`](data/ducky/label.pbtxt)
 
 ## Image Annotation
 [`op/img/annotate.sh`](op/img/annotate.sh)

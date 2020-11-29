@@ -34,7 +34,8 @@ except ImportError:
 def eager_eval_loop(
         model: DetectionModel,
         configs: Dict,
-        eval_dataset: Tuple[str, tf.data.Dataset],
+        eval_name: str,
+        eval_dataset: tf.data.Dataset,
         use_tpu: bool = False,
         postprocess_on_cpu: bool = False,
         global_step: Optional[tf.Variable] = None,
@@ -48,6 +49,7 @@ def eager_eval_loop(
         model: A DetectionModel (based on Keras) to evaluate.
         configs: Object detection configs that specify the evaluators that should be used, as well as whether
             regularization loss should be included and if bfloat16 should be used on TPUs.
+        eval_name: Name of dataset.
         eval_dataset: Dataset containing evaluation data.
         use_tpu: Whether a TPU is being used to execute the model for evaluation.
         postprocess_on_cpu: Whether model postprocessing should happen on the CPU when using a TPU to execute the model.
@@ -153,6 +155,8 @@ def eager_eval_loop(
     keypoint_edges = [(kp.start, kp.end) for kp in eval_config.keypoint_edge]
     
     # proceed with evaluation
+    v1.logging.info('=== Evaluating <%s> at step %d ===', eval_name, global_step)
+    
     for i, (features, labels) in enumerate(eval_dataset):
         eval_dict, loss_dict, class_agnostic = compute_eval_dict(features, labels)
         
@@ -160,9 +164,6 @@ def eager_eval_loop(
             category_index = agnostic_categories
         else:
             category_index = per_class_categories
-        
-        if i % 100 == 0:
-            v1.logging.info('Finished eval step %d', i)
         
         use_original_imgs = fields.InputDataFields.original_image in features
         
@@ -219,11 +220,14 @@ def eager_eval_loop(
         eval_metrics[loss_key] = loss_metrics[loss_key].result()
     
     eval_metrics = {str(k): v for k, v in eval_metrics.items()}
-    v1.logging.info('Eval metrics at step %d', global_step)
+    eval_inc_keys = ['DetectionBoxes_Precision/mAP', 'Loss/localization_loss', 'Loss/classification_loss', 'Loss/total_loss']
     
     for k in eval_metrics:
+        if eval_inc_keys and k not in eval_inc_keys:
+            continue
+        
         tf.summary.scalar(k, eval_metrics[k], step=global_step)
-        v1.logging.info('\t+ %s: %f', k, eval_metrics[k])
+        v1.logging.info('- %s: %f', k, eval_metrics[k])
     
     return eval_metrics
 
@@ -256,7 +260,7 @@ def eval_continuously(
         sample_1_of_n_eval_examples: Integer representing how often an eval example should be sampled. If 1, will sample
             all examples.
         sample_1_of_n_eval_on_train_examples: Similar to `sample_1_of_n_eval_examples`, except controls the sampling of
-            trainingdata for evaluation.
+            training data for evaluation.
         use_tpu: Boolean, whether training and evaluation should run on TPU.
         override_eval_num_epochs: Whether to overwrite the number of epochs to 1 for eval_input.
         postprocess_on_cpu: When use_tpu and postprocess_on_cpu are true, postprocess is scheduled on the host cpu.
@@ -265,7 +269,7 @@ def eval_continuously(
         wait_interval: The mimmum number of seconds to wait before checking for a new checkpoint.
         timeout: The maximum number of seconds to wait for a checkpoint. Execution will terminate if no new checkpoints
             are found after these many seconds.
-        eval_index: int, optional If give, only evaluate the dataset at the given index.
+        eval_index: int, optional. If give, only evaluate the dataset at the given index.
         **kwargs: Additional keyword arguments for configuration override.
     """
     
@@ -285,19 +289,8 @@ def eval_continuously(
     
     configs = config_util.merge_external_params_with_configs(configs, None, kwargs_dict=kwargs)
     model_config = configs['model']
-    train_input_config = configs['train_input_config']
     eval_config = configs['eval_config']
     eval_input_configs = configs['eval_input_configs']
-    eval_on_train_input_config = copy.deepcopy(train_input_config)
-    eval_on_train_input_config.sample_1_of_n_examples = sample_1_of_n_eval_on_train_examples
-    
-    if override_eval_num_epochs and eval_on_train_input_config.num_epochs != 1:
-        eval_msg = (
-            'Expected number of evaluation epochs is 1, but instead encountered '
-            '`eval_on_train_input_config.num_epochs` = {}. Overwriting `num_epochs` to 1.'
-        )
-        v1.logging.warning(eval_msg.format(eval_on_train_input_config.num_epochs))
-        eval_on_train_input_config.num_epochs = 1
     
     if kwargs['use_bfloat16']:
         tf.keras.mixed_precision.experimental.set_policy('mixed_bfloat16')
@@ -337,6 +330,7 @@ def eval_continuously(
                 eager_eval_loop(
                     model,
                     configs,
+                    eval_name,
                     eval_input,
                     use_tpu=use_tpu,
                     postprocess_on_cpu=postprocess_on_cpu,

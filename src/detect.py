@@ -1,13 +1,13 @@
 # import
 import detector
-import os
 import tensorflow as tf
 
 from absl import flags
+from detector.util import log_util
 
 
-# reduce tensorflow logging
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+# reduce log
+log_util.reduce_log()
 
 
 # config
