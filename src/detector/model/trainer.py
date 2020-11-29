@@ -194,6 +194,35 @@ def get_unfrozen_train_vars(model: tf.keras.layers.Layer, train_config: train_pb
     return var_util.filter_train_vars(model.trainable_variables, inc_patterns, exc_patterns)
 
 
+def init_model_vars(
+        model: DetectionModel,
+        input_dataset: tf.distribute.DistributedDataset,
+        unpad_gt_tensors: bool,
+) -> None:
+    """Initialize all variables in model by computing a dummy loss.
+    
+    Args:
+        model: A DetectionModel (based on Keras) to load a fine-tuning checkpoint for.
+        input_dataset: The tf.data Dataset the model is being trained on. Needed to get the shapes for the dummy loss
+            computation.
+        unpad_gt_tensors: A parameter passed to unstack_batch.
+    """
+    
+    # executes the model by computing a dummy loss, so that variables are all built
+    @tf.function
+    def _dummy_computation_fn(dummy_features, dummy_labels):
+        model._is_training = False  # pylint: disable=protected-access
+        tf.keras.backend.set_learning_phase(False)
+        
+        dummy_labels = model_lib.unstack_batch(dummy_labels, unpad_groundtruth_tensors=unpad_gt_tensors)
+        
+        return loss_util.predict_with_loss(model, dummy_features, dummy_labels)
+    
+    features, labels = iter(input_dataset).next()
+    strategy = tf.distribute.get_strategy()
+    strategy.run(_dummy_computation_fn, args=(features, labels))
+
+
 def is_object_based_ckpt(ckpt_path: str) -> bool:
     """Returns true if `ckpt_path` points to an object-based checkpoint."""
     
@@ -207,6 +236,11 @@ def list_train_var_names(config_path: str) -> None:
 
     # config
     configs = config_util.get_configs_from_pipeline_file(config_path)
+    train_config = configs['train_config']
+    base_ckpt = train_config.fine_tune_checkpoint
+    base_ckpt_type = train_config.fine_tune_checkpoint_type
+    base_ckpt_ver = train_config.fine_tune_checkpoint_version
+    unpad_gt_tensors = train_config.unpad_groundtruth_tensors
     
     # model
     model_config = configs['model']
@@ -217,14 +251,11 @@ def list_train_var_names(config_path: str) -> None:
         # build input
         train_input = get_train_input(model, configs, strategy)
 
-        # load a pre-trained checkpoint
-        train_config = configs['train_config']
-        base_ckpt = train_config.fine_tune_checkpoint
-        base_ckpt_type = train_config.fine_tune_checkpoint_type
-        base_ckpt_ver = train_config.fine_tune_checkpoint_version
-        unpad_gt_tensors = train_config.unpad_groundtruth_tensors
+        # init model vars
+        init_model_vars(model, train_input, unpad_gt_tensors)
         
-        load_base_ckpt(model, base_ckpt, base_ckpt_type, base_ckpt_ver, train_input, unpad_gt_tensors)
+        # load a pre-trained checkpoint
+        load_base_ckpt(model, base_ckpt, base_ckpt_type, base_ckpt_ver)
     
     # list all trainable variables (without filtering frozen variables)
     for train_var in model.trainable_variables:
@@ -236,8 +267,6 @@ def load_base_ckpt(
         ckpt_path: str,
         ckpt_type: str,
         ckpt_ver: train_pb2.CheckpointVersion,
-        input_dataset: tf.distribute.DistributedDataset,
-        unpad_gt_tensors: bool,
 ) -> None:
     """Load a fine tuning classification or detection checkpoint.
     
@@ -256,9 +285,6 @@ def load_base_ckpt(
             Valid values: `detection`, `classification`.
         ckpt_ver: train_pb2.CheckpointVersion.V1 or V2 enum indicating whether to load checkpoints in V1 style
             or V2 style. In this binary we only support V2 style (object-based) checkpoints.
-        input_dataset: The tf.data Dataset the model is being trained on. Needed to get the shapes for the dummy loss
-            computation.
-        unpad_gt_tensors: A parameter passed to unstack_batch.
     
     Raises:
         IOError: if `ckpt_path` does not point at a valid object-based checkpoint
@@ -269,21 +295,6 @@ def load_base_ckpt(
         raise IOError('Checkpoint is expected to be an object-based checkpoint.')
     if ckpt_ver == train_pb2.CheckpointVersion.V1:
         raise ValueError('Checkpoint version should be V2')
-    
-    if input_dataset is not None:
-        # executes the model by computing a dummy loss, so that variables are all built
-        @tf.function
-        def _dummy_computation_fn(dummy_features, dummy_labels):
-            model._is_training = False  # pylint: disable=protected-access
-            tf.keras.backend.set_learning_phase(False)
-            
-            dummy_labels = model_lib.unstack_batch(dummy_labels, unpad_groundtruth_tensors=unpad_gt_tensors)
-            
-            return loss_util.predict_with_loss(model, dummy_features, dummy_labels)
-        
-        features, labels = iter(input_dataset).next()
-        strategy = tf.distribute.get_strategy()
-        strategy.run(_dummy_computation_fn, args=(features, labels))
     
     # validate model
     restore_from_objects_dict = model.restore_from_objects(fine_tune_checkpoint_type=ckpt_type)
@@ -393,6 +404,9 @@ def train_loop(
         # build input
         train_input = get_train_input(model, configs, strategy)
         
+        # init model vars
+        init_model_vars(model, train_input, unpad_gt_tensors)
+        
         # build optimizer
         global_step = tf.Variable(
             0,
@@ -439,7 +453,7 @@ def train_loop(
                     ckpt.restore(latest_ckpt).expect_partial()
                 elif base_ckpt:
                     # load a pre-trained checkpoint
-                    load_base_ckpt(model, base_ckpt, base_ckpt_type, base_ckpt_ver, train_input, unpad_gt_tensors)
+                    load_base_ckpt(model, base_ckpt, base_ckpt_type, base_ckpt_ver)
                 
                 # get trainable variables
                 train_vars = get_unfrozen_train_vars(model, train_config)
