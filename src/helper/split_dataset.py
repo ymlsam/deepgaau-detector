@@ -8,17 +8,21 @@ from shutil import copyfile
 from typing import List
 
 
-def copy_file(in_dir: str, out_sub_dir: str, fn: str) -> None:
-    copyfile(os.path.join(in_dir, fn), os.path.join(out_sub_dir, fn))
+def copy_file(in_dir: str, in_name: str, out_dir: str, out_name: str, ext: str) -> None:
+    in_path = os.path.join(in_dir, in_name + ext)
+    out_path = os.path.join(out_dir, out_name + ext)
+    
+    copyfile(in_path, out_path)
 
 
-def copy_img(in_dir: str, out_sub_dir: str, fn: str, copy_xml: bool) -> None:
-    copy_file(in_dir, out_sub_dir, fn)
+def copy_img(in_dir: str, out_dir: str, fn: str, idx: int, copy_xml: bool) -> None:
+    in_name, ext = os.path.splitext(fn)
+    out_name = os.path.basename(out_dir) + '.' + str(idx)
+    
+    copy_file(in_dir, in_name, out_dir, out_name, ext)
     
     if copy_xml:
-        path, ext = os.path.splitext(fn)
-        xml_fn = path + '.xml'
-        copy_file(in_dir, out_sub_dir, xml_fn)
+        copy_file(in_dir, in_name, out_dir, out_name, '.xml')
 
 
 def split(in_dir: str, out_dir: str, dev_ratio: float, test_ratio: float, copy_xml: bool) -> None:
@@ -47,9 +51,10 @@ def split_sub(in_dir: str, out_sub_dir: str, imgs: List[str], sub_img_cnt: int, 
     if not os.path.exists(out_sub_dir):
         os.makedirs(out_sub_dir)
     
+    # output a shuffled subset of images
     for i in range(sub_img_cnt):
         idx = random.randint(0, len(imgs) - 1)
-        copy_img(in_dir, out_sub_dir, imgs[idx], copy_xml)
+        copy_img(in_dir, out_sub_dir, imgs[idx], i, copy_xml)
         imgs.pop(idx)
 
 

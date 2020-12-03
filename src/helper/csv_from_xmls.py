@@ -35,7 +35,11 @@ def df_from_xmls(in_dir: str, sub_dir: str) -> Optional[pd.DataFrame]:
     for xml_file in xml_files:
         tree = ElementTree.parse(xml_file)
         root = tree.getroot()
-        fn = root.find('filename').text
+        
+        # fn = root.find('filename').text  # filename is not up to date after being copied
+        ext = os.path.splitext(root.find('filename').text)[1]
+        fn = os.path.splitext(os.path.basename(xml_file))[0] + ext
+        
         size = root.find('size')
         w = int(size.find('width').text)
         h = int(size.find('height').text)
